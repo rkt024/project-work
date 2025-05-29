@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sqlite3.h>
+#include <string.h>
+#include <ctype.h>
 
 // Function Prototypes
 void clearScreen();
@@ -8,8 +10,14 @@ void waitForEnter();
 void initializeDatabase(sqlite3 *db);
 void showMainMenu(sqlite3 *db);
 void propertyMenu(sqlite3 *db);
-void roomManagementMenu(sqlite3 *db);
 void flatManagementMenu(sqlite3 *db);
+
+// Function prototypes for room management
+void roomManagementMenu(sqlite3 *db);
+void addNewRoom(sqlite3 *db);
+void viewAllRooms(sqlite3 *db);
+void editRoom(sqlite3 *db);
+void deleteRoom(sqlite3 *db);
 
 // Helper function to clear the input buffer
 void clearInputBuffer() {
@@ -78,7 +86,7 @@ void initializeDatabase(sqlite3 *db) {
 }
 
 void showMainMenu(sqlite3 *db) {
-    clearScreen();
+    // clearScreen();
     printf("\n=== Rental Management System ===\n\n");
     printf("1. Property Structure Management\n");
     printf("2. Tenant Management\n");
@@ -162,6 +170,7 @@ void propertyMenu(sqlite3 *db) {
     }
 }
 
+// Room Management Functions
 void roomManagementMenu(sqlite3 *db) {
     int choice;
 
@@ -181,24 +190,22 @@ void roomManagementMenu(sqlite3 *db) {
             waitForEnter();
             continue;
         }
+        printf("After scanf, choice is: %d\n", choice);  // Debugging print
         clearInputBuffer();
 
         switch (choice) {
             case 1:
-                printf("Add New Room - Coming soon!\n");
-                waitForEnter();
+                addNewRoom(db);
                 break;
             case 2:
-                printf("View All Rooms - Coming soon!\n");
-                waitForEnter();
+                printf("Calling viewAllRooms...\n");
+                // viewAllRooms(db);
                 break;
             case 3:
-                printf("Edit Room - Coming soon!\n");
-                waitForEnter();
+                editRoom(db);
                 break;
             case 4:
-                printf("Delete Room - Coming soon!\n");
-                waitForEnter();
+                deleteRoom(db);
                 break;
             case 0:
                 return;
@@ -209,6 +216,221 @@ void roomManagementMenu(sqlite3 *db) {
     }
 }
 
+// Add new room to the database
+void addNewRoom(sqlite3 *db) {
+    clearScreen();
+    printf("\n=== ADD NEW ROOM ===\n\n");
+    
+    char number[50];
+    char description[200];
+    
+    printf("Enter room number: ");
+    fgets(number, sizeof(number), stdin);
+    number[strcspn(number, "\n")] = 0; // Remove newline
+    
+    printf("Enter room description (optional): ");
+    fgets(description, sizeof(description), stdin);
+    description[strcspn(description, "\n")] = 0;
+    
+    // Prepare SQL statement
+    char sql[500];
+    if (strlen(description) > 0) {
+        sprintf(sql, "INSERT INTO rooms (number, description) VALUES ('%s', '%s');", 
+                number, description);
+    } else {
+        sprintf(sql, "INSERT INTO rooms (number) VALUES ('%s');", number);
+    }
+    
+    char *err_msg = 0;
+    int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+    
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        printf("\nFailed to add room!\n");
+    } else {
+        printf("\nRoom added successfully!\n");
+    }
+    
+    waitForEnter();
+}
+
+void viewAllRooms(sqlite3 *db) {
+    clearScreen();
+    printf("\n=== ALL ROOMS ===\n\n");
+    
+    
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "SELECT id, number, description FROM rooms ORDER BY number;";
+    
+    // Prepare the SQL statement
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
+        waitForEnter();
+        return;
+    }
+    
+    printf("%-5s %-15s %-30s\n", "ID", "Room Number", "Description");
+    printf("------------------------------------------------\n");
+    
+    int count = 0;
+    while (1) {
+        int result = sqlite3_step(stmt);
+        
+        if (result == SQLITE_ROW) {
+            // Get column values
+            int id = sqlite3_column_int(stmt, 0);
+            const char *number = (const char*)sqlite3_column_text(stmt, 1);
+            const char *description = (const char*)sqlite3_column_text(stmt, 2);
+            
+            // Handle NULL values
+            if (number == NULL) number = "-";
+            if (description == NULL) description = "-";
+            
+            printf("%-5d %-15s %-30s\n", id, number, description);
+            count++;
+        } else if (result == SQLITE_DONE) {
+            break;  // All rows processed
+        } else {
+            // Error occurred
+            fprintf(stderr, "Error fetching data: %s\n", sqlite3_errmsg(db));
+            break;
+        }
+    }
+    
+    if (count == 0) {
+        printf("No rooms found in database.\n");
+    } else {
+        printf("\nTotal rooms: %d\n", count);
+    }
+    
+    // Finalize the statement to release resources
+    sqlite3_finalize(stmt);
+}
+
+// Edit existing room information
+void editRoom(sqlite3 *db) {
+    clearScreen();
+    printf("\n=== EDIT ROOM ===\n\n");
+    
+    // First show all rooms
+    viewAllRooms(db);
+    
+    int room_id;
+    printf("\nEnter room ID to edit: ");
+    if (scanf("%d", &room_id) != 1) {
+        clearInputBuffer();
+        printf("Invalid room ID.\n");
+        waitForEnter();
+        return;
+    }
+    clearInputBuffer();
+    
+    char new_number[50];
+    char new_description[200];
+    
+    printf("Enter new room number (leave blank to keep current): ");
+    fgets(new_number, sizeof(new_number), stdin);
+    new_number[strcspn(new_number, "\n")] = 0;
+    
+    printf("Enter new description (leave blank to keep current): ");
+    fgets(new_description, sizeof(new_description), stdin);
+    new_description[strcspn(new_description, "\n")] = 0;
+    
+    // Prepare SQL statement based on what fields are being updated
+    char sql[500];
+    int updates = 0;
+    
+    if (strlen(new_number) > 0 || strlen(new_description) > 0) {
+        strcpy(sql, "UPDATE rooms SET ");
+        
+        if (strlen(new_number) > 0) {
+            strcat(sql, "number = '");
+            strcat(sql, new_number);
+            strcat(sql, "'");
+            updates++;
+        }
+        
+        if (strlen(new_description) > 0) {
+            if (updates) strcat(sql, ", ");
+            strcat(sql, "description = '");
+            strcat(sql, new_description);
+            strcat(sql, "'");
+            updates++;
+        }
+        
+        strcat(sql, " WHERE id = ");
+        char id_str[10];
+        sprintf(id_str, "%d;", room_id);
+        strcat(sql, id_str);
+        
+        char *err_msg = 0;
+        int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+        
+        if (rc != SQLITE_OK) {
+            fprintf(stderr, "SQL error: %s\n", err_msg);
+            sqlite3_free(err_msg);
+            printf("\nFailed to update room!\n");
+        } else {
+            printf("\nRoom information updated successfully!\n");
+        }
+    } else {
+        printf("No changes made.\n");
+    }
+    
+    waitForEnter();
+}
+
+// Delete a room from the database
+void deleteRoom(sqlite3 *db) {
+    clearScreen();
+    printf("\n=== DELETE ROOM ===\n\n");
+    
+    // First show all rooms
+    viewAllRooms(db);
+    
+    int room_id;
+    printf("\nEnter room ID to delete: ");
+    if (scanf("%d", &room_id) != 1) {
+        clearInputBuffer();
+        printf("Invalid room ID.\n");
+        waitForEnter();
+        return;
+    }
+    clearInputBuffer();
+    
+    // Confirm deletion
+    char confirm;
+    printf("Are you sure you want to delete this room? (y/n): ");
+    scanf(" %c", &confirm);
+    clearInputBuffer();
+    
+    if (tolower(confirm) != 'y') {
+        printf("Deletion canceled.\n");
+        waitForEnter();
+        return;
+    }
+    
+    char sql[100];
+    sprintf(sql, "DELETE FROM rooms WHERE id = %d;", room_id);
+    
+    char *err_msg = 0;
+    int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+    
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        printf("\nFailed to delete room!\n");
+    } else {
+        printf("\nRoom deleted successfully!\n");
+    }
+    
+    waitForEnter();
+}
+
+
+// Flat Management Functions
 void flatManagementMenu(sqlite3 *db) {
     int choice;
 
