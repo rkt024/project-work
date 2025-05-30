@@ -1,3 +1,10 @@
+/*
+ * Simple Rental Management System
+ * Console-based application for managing multi-story house rentals
+ * Features: SQLite database, tenant management, payment tracking, basic reporting
+ */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sqlite3.h>
@@ -87,7 +94,12 @@ void initializeDatabase(sqlite3 *db) {
 
 void showMainMenu(sqlite3 *db) {
     // clearScreen();
-    printf("\n=== Rental Management System ===\n\n");
+
+    printf("==============================================\n");
+    printf("    SIMPLE RENTAL MANAGEMENT SYSTEM\n");
+    printf("    Multi-Story House Management\n");
+    printf("==============================================\n\n");
+
     printf("1. Property Structure Management\n");
     printf("2. Tenant Management\n");
     printf("3. Rent and Utility Management\n");
@@ -169,14 +181,16 @@ void propertyMenu(sqlite3 *db) {
         }
     }
 }
-
+/* 
 // Room Management Functions
 void roomManagementMenu(sqlite3 *db) {
     int choice;
 
     while (1) {
         clearScreen();
-        printf("\n=== ROOM MANAGEMENT ===\n\n");
+        printf("\n==============================================\n");
+        printf("           ROOM MANAGEMENT\n");
+        printf("==============================================\n");
         printf("1. Add New Room\n");
         printf("2. View All Rooms\n");
         printf("3. Edit Room\n");
@@ -190,7 +204,7 @@ void roomManagementMenu(sqlite3 *db) {
             waitForEnter();
             continue;
         }
-        printf("After scanf, choice is: %d\n", choice);  // Debugging print
+        // printf("After scanf, choice is: %d\n", choice);  // Debugging print
         clearInputBuffer();
 
         switch (choice) {
@@ -198,8 +212,8 @@ void roomManagementMenu(sqlite3 *db) {
                 addNewRoom(db);
                 break;
             case 2:
-                printf("Calling viewAllRooms...\n");
-                // viewAllRooms(db);
+                // printf("Calling viewAllRooms...\n");
+                viewAllRooms(db);
                 break;
             case 3:
                 editRoom(db);
@@ -213,6 +227,60 @@ void roomManagementMenu(sqlite3 *db) {
                 printf("Invalid choice. Please try again.\n");
                 waitForEnter();
         }
+    }
+}
+ */
+// Replace your roomManagementMenu function with this debug version:
+
+void roomManagementMenu(sqlite3 *db) {
+    int choice;
+
+    while (1) {
+        clearScreen();
+        printf("\n==============================================\n");
+        printf("           ROOM MANAGEMENT\n");
+        printf("==============================================\n");
+        printf("1. Add New Room\n");
+        printf("2. View All Rooms\n");
+        printf("3. Edit Room\n");
+        printf("4. Delete Room\n");
+        printf("0. Return to Previous Menu\n");
+        printf("\nEnter your choice: ");
+
+        /* int scanf_result = scanf("%d", &choice);
+        printf("DEBUG: scanf returned: %d\n", scanf_result);
+        printf("DEBUG: choice value is: %d\n", choice); */
+        
+        if (scanf("%d", &choice) != 1) {
+            clearInputBuffer();
+            printf("Invalid input. Please enter a number.\n");
+            waitForEnter();
+            continue;
+        }
+        clearInputBuffer();
+
+
+        switch (choice) {
+            case 1:
+                addNewRoom(db);
+                break;
+            case 2:
+                viewAllRooms(db);
+                break;
+            case 3:
+                editRoom(db);
+                break;
+            case 4:
+                deleteRoom(db);
+                break;
+            case 0:
+                return;
+            default:
+                printf("Invalid choice. Please try again.\n");
+                waitForEnter();
+        }
+        
+        waitForEnter();
     }
 }
 
@@ -252,7 +320,7 @@ void addNewRoom(sqlite3 *db) {
         printf("\nRoom added successfully!\n");
     }
     
-    waitForEnter();
+    // waitForEnter();
 }
 
 void viewAllRooms(sqlite3 *db) {
@@ -379,7 +447,7 @@ void editRoom(sqlite3 *db) {
         printf("No changes made.\n");
     }
     
-    waitForEnter();
+    // waitForEnter();
 }
 
 // Delete a room from the database
@@ -426,7 +494,7 @@ void deleteRoom(sqlite3 *db) {
         printf("\nRoom deleted successfully!\n");
     }
     
-    waitForEnter();
+    // waitForEnter();
 }
 
 
