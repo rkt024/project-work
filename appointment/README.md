@@ -15,7 +15,7 @@ The Hospital Appointment System is a console-based application that manages pati
 ### Data Flow Diagram
 ![Data Flow Diagram](./data_flow_diagram.png)
 
-### Data Flow Diagram
+### Work Flow Diagram
 ![Work Flow Diagram](./work_flow_diagram.png)
 
 ### Database ER Diagram
