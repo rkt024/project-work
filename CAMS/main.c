@@ -1,12 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <sqlite3.h>
+#include <sqlite3.h>
 
 // Constants
 #define MAX_STRING 256
 #define MAX_APPOINTMENTS_PER_DAY 15
 #define DB_NAME "clinic.db"
+
+// Global database connection
+sqlite3 *db;
+
+// DB Function Prototypes
+void connect_database();
+void initialize_database();
+void execute_sql(sqlite3 *db, const char *sql);
 
 // User roles
 typedef enum {
@@ -19,19 +27,97 @@ void wait_for_enter();
 void clear_screen();
 void clear_input_buffer();
 
-// Function prototypes
+// DB Function Prototypes
+void connect_database();
+void initialize_database();
+void execute_sql(sqlite3 *db, const char *sql);
+
+// Menu Functions
 void show_main_menu();
 void receptionist_menu();
 void admin_menu();
+void generate_reports_menu();
 void view_system_data_menu();
+
+// Admin Functions
 void view_doctors();
 void view_patients();
 void view_appointments();
-void generate_reports_menu();
 void generate_daily_report();
 void generate_patient_list_by_doctor();
 void generate_appointment_trends();
 
+// Receptionist Functions
+
+
+int main() {
+    clear_screen();
+    connect_database();
+    initialize_database(db);
+
+    // Show the main menu after login
+    show_main_menu();
+
+
+
+    sqlite3_close(db);
+    return 0;
+}
+
+// Connect Database
+void connect_database() {
+    int rc = sqlite3_open(DB_NAME, &db);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Database error: %s\n", sqlite3_errmsg(db));
+        exit(1);
+    }
+    // Enable foreign keys
+    sqlite3_exec(db, "PRAGMA foreign_keys = ON;", 0, 0, 0);
+}
+
+// Function to initialize the database and create tables
+void initialize_database(sqlite3 *db) {
+    const char *sql = 
+        "CREATE TABLE IF NOT EXISTS patients ("
+        "patient_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "full_name TEXT NOT NULL, "
+        "age INTEGER CHECK(age > 0), "
+        "weight REAL CHECK(weight > 0), "
+        "address TEXT, "
+        "contact TEXT NOT NULL, "
+        "gender TEXT CHECK(gender IN ('M','F','O'))"
+        "); "
+
+        "CREATE TABLE IF NOT EXISTS doctors ("
+        "doctor_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "full_name TEXT NOT NULL, "
+        "specialization TEXT NOT NULL, "
+        "contact TEXT NOT NULL"
+        "); "
+
+        "CREATE TABLE IF NOT EXISTS appointments ("
+        "appointment_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "patient_id INTEGER NOT NULL, "
+        "doctor_id INTEGER NOT NULL, "
+        "appointment_date TEXT NOT NULL CHECK(appointment_date GLOB '????-??-??'), "
+        "appointment_time TEXT NOT NULL CHECK(appointment_time GLOB '??:??'), "
+        "FOREIGN KEY(patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE, "
+        "FOREIGN KEY(doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE"
+        ");";
+
+    execute_sql(db, sql);
+}
+
+// Function to execute SQL queries
+void execute_sql(sqlite3 *db, const char *sql) {
+    char *err_msg = 0;
+    int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+}
 
 void show_main_menu() {
     int choice;
@@ -393,12 +479,5 @@ void clear_screen() {
 
 void clear_input_buffer() {
     while (getchar() != '\n'); // Flush input buffer
-}
-
-int main() {
-    // Show the main menu after login
-    show_main_menu();
-
-    return 0;
 }
 
