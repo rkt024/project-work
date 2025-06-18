@@ -1,0 +1,27 @@
+// Global variables
+//sqlite3 *db = NULL;
+// UserRole current_user_role = ROLE_RECEPTIONIST;
+
+// Function prototypes
+// void show_main_menu();
+// void receptionist_menu();
+// void admin_menu();
+// void clear_screen();
+// void wait_for_key();
+
+//// Placeholder functions for receptionist menu options
+//void add_doctor() { /* Functionality for adding doctor */ }
+//void edit_doctor() { /* Functionality for editing doctor */ }
+//void delete_doctor() { /* Functionality for deleting doctor */ }
+//void view_doctors() { /* Functionality for viewing doctors */ }
+//void add_patient() { /* Functionality for adding patient */ }
+//void view_patients() { /* Functionality for viewing patients */ }
+//void schedule_appointment() { /* Functionality for scheduling appointment */ }
+//void edit_appointment() { /* Functionality for editing appointment */ }
+//void delete_appointment() { /* Functionality for deleting appointment */ }
+//void view_appointments() { /* Functionality for viewing appointments */ }
+//
+////// Placeholder functions for admin menu options
+//void generate_daily_report() { /* Functionality for generating daily report */ }
+//void generate_patient_list_by_doctor() { /* Functionality for generating patient list by doctor */ }
+//void generate_appointment_trends() { /* Functionality for generating appointment trends */ }

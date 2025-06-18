@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build and run C program",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "main.c",
+        "-o",
+        "cags.exe"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Compiles C program"
+    }
+  ]
+}
