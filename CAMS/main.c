@@ -11,11 +11,6 @@
 // Global database connection
 sqlite3 *db;
 
-// DB Function Prototypes
-void connect_database();
-void initialize_database();
-void execute_sql(sqlite3 *db, const char *sql);
-
 // User roles
 typedef enum {
     ROLE_ADMIN = 1,
@@ -27,10 +22,12 @@ void wait_for_enter();
 void clear_screen();
 void clear_input_buffer();
 
+/* 
 // DB Function Prototypes
 void connect_database();
-void initialize_database();
+void initialize_database(sqlite3 *db);
 void execute_sql(sqlite3 *db, const char *sql);
+ */
 
 // Menu Functions
 void show_main_menu();
@@ -48,22 +45,22 @@ void generate_patient_list_by_doctor();
 void generate_appointment_trends();
 
 // Receptionist Functions
+void doctor_management_menu();
+void add_doctor();
+void edit_doctor();
+void delete_doctor();
 
+void patient_management_menu();
+void add_patient();
+void edit_patient();
+void delete_patient();
 
-int main() {
-    clear_screen();
-    connect_database();
-    initialize_database(db);
+void appointment_management_menu();
+void schedule_appointment();
+void edit_appointment();
+void delete_appointment();
 
-    // Show the main menu after login
-    show_main_menu();
-
-
-
-    sqlite3_close(db);
-    return 0;
-}
-
+/* 
 // Connect Database
 void connect_database() {
     int rc = sqlite3_open(DB_NAME, &db);
@@ -71,13 +68,12 @@ void connect_database() {
         fprintf(stderr, "Database error: %s\n", sqlite3_errmsg(db));
         exit(1);
     }
-    // Enable foreign keys
     sqlite3_exec(db, "PRAGMA foreign_keys = ON;", 0, 0, 0);
 }
 
-// Function to initialize the database and create tables
+// Initialize Database and Tables
 void initialize_database(sqlite3 *db) {
-    const char *sql = 
+    const char *sql =
         "CREATE TABLE IF NOT EXISTS patients ("
         "patient_id INTEGER PRIMARY KEY AUTOINCREMENT, "
         "full_name TEXT NOT NULL, "
@@ -108,7 +104,7 @@ void initialize_database(sqlite3 *db) {
     execute_sql(db, sql);
 }
 
-// Function to execute SQL queries
+// Execute SQL Queries
 void execute_sql(sqlite3 *db, const char *sql) {
     char *err_msg = 0;
     int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
@@ -117,23 +113,23 @@ void execute_sql(sqlite3 *db, const char *sql) {
         fprintf(stderr, "SQL error: %s\n", err_msg);
         sqlite3_free(err_msg);
     }
-}
+} 
+*/
 
+// Main Menu
 void show_main_menu() {
     int choice;
     
-    // Loop for main menu
     while(1) {
-    	clear_screen();
-    	printf("=================================================\n");
-    	printf("    CLINIC APPOINTMENT MANAGEMENT SYSTEM (CAGS)  \n");
-    	printf("==================================================\n\n");
+        clear_screen();
+        printf("=================================================\n");
+        printf("    CLINIC APPOINTMENT MANAGEMENT SYSTEM (CAGS)  \n");
+        printf("==================================================\n\n");
         printf("1. Goto Admin Section\n");
         printf("2. Goto Receptionist Section\n");
         printf("0. Exit\n");
         printf("\nEnter your Choice: ");
         
-        // Read and clear input buffer after reading
         scanf("%d", &choice);
         clear_input_buffer();
 
@@ -150,17 +146,15 @@ void show_main_menu() {
                 exit(0);
             default:
                 printf("Invalid choice. Please try again.\n");
+                wait_for_enter();
         }
     }
 }
 
-//===============================================================================
-// Admin Functions
-
+// Admin Menu
 void admin_menu() {
     int choice;
     
-    // Loop for admin menu
     while (1) {
         clear_screen();
         printf("\n=== ADMIN MENU ===\n\n");
@@ -175,7 +169,7 @@ void admin_menu() {
         switch (choice) {
             case 1 : view_system_data_menu(); break;
             case 2 : generate_reports_menu(); break;
-            case 0 : return;  // Logout
+            case 0 : return;
             default: 
                 printf("Invalid choice!\n"); 
                 wait_for_enter(); 
@@ -184,10 +178,10 @@ void admin_menu() {
     }
 }
 
+// View System Data Menu
 void view_system_data_menu() {
     int choice;
 
-    // Loop for system data menu
     while (1) {
         clear_screen();
         printf("\n=== VIEW SYSTEM DATA ===\n\n");
@@ -204,7 +198,7 @@ void view_system_data_menu() {
             case 1 : view_doctors(); break;
             case 2 : view_patients(); break;
             case 3 : view_appointments(); break;
-            case 0 : return;  // Back to Admin Menu
+            case 0 : return;
             default: 
                 printf("Invalid choice!\n"); 
                 wait_for_enter(); 
@@ -213,31 +207,26 @@ void view_system_data_menu() {
     }
 }
 
+// Admin Function Placeholders
 void view_doctors() {
-    // Placeholder for viewing doctors
     printf("Viewing all doctors...\n");
-    // Actual implementation would go here
     wait_for_enter();
 }
 
 void view_patients() {
-    // Placeholder for viewing patients
     printf("Viewing all patients...\n");
-    // Actual implementation would go here
     wait_for_enter();
 }
 
 void view_appointments() {
-    // Placeholder for viewing appointments
     printf("Viewing all appointments...\n");
-    // Actual implementation would go here
     wait_for_enter();
 }
 
+// Reports Menu
 void generate_reports_menu() {
     int choice;
 
-    // Loop for report generation menu
     while (1) {
         clear_screen();
         printf("\n=== GENERATE REPORTS ===\n\n");
@@ -254,7 +243,7 @@ void generate_reports_menu() {
             case 1 : generate_daily_report(); break;
             case 2 : generate_patient_list_by_doctor(); break;
             case 3 : generate_appointment_trends(); break;
-            case 0 : return;  // Back to Admin Menu
+            case 0 : return;
             default: 
                 printf("Invalid choice!\n"); 
                 wait_for_enter(); 
@@ -264,56 +253,79 @@ void generate_reports_menu() {
 }
 
 void generate_daily_report() {
-    // Placeholder for generating daily report
     printf("Generating daily doctor-wise report...\n");
-    // Actual implementation would go here
     wait_for_enter();
 }
 
 void generate_patient_list_by_doctor() {
-    // Placeholder for generating patient list by doctor
     printf("Generating patient list by doctor...\n");
-    // Actual implementation would go here
     wait_for_enter();
 }
 
 void generate_appointment_trends() {
-    // Placeholder for generating appointment trends
     printf("Generating appointment trends...\n");
-    // Actual implementation would go here
     wait_for_enter();
 }
 
-//===============================================================================
-// Receptionist Functions
-
+// Receptionist Menu
 void receptionist_menu() {
     int choice;
     while (1) {
         clear_screen();
         printf("\n=== RECEPTIONIST MENU ===\n");
-        printf("1. Doctor Management\n");
+        printf("1. Appointment Management\n");
         printf("2. Patient Management\n");
-        printf("3. Appointment Management\n");
+        printf("3. Doctor Management\n");
         printf("0. Logout\n\n");
+        printf("Enter your choice: ");
+        
+        scanf("%d", &choice);
+        clear_input_buffer();
+
+        switch (choice) {
+            case 1: appointment_management_menu(); break;
+            case 2: patient_management_menu(); break;
+            case 3: doctor_management_menu(); break;
+            case 0: return;
+            default: 
+                printf("Invalid choice!\n");
+                wait_for_enter();
+                break;
+        }
+    }
+}
+
+// Appointment Management
+void appointment_management_menu() {
+    int choice;
+    while (1) {
+        clear_screen();
+        printf("\n=== APPOINTMENT MANAGEMENT ===\n");
+        printf("1. Schedule Appointment\n");
+        printf("2. Edit Appointment\n");
+        printf("3. Delete Appointment\n");
+        printf("4. View Appointment\n");
+        printf("0. Back\n");
         printf("Enter your choice: ");
 
         scanf("%d", &choice);
         clear_input_buffer();
 
         switch (choice) {
-            case 1: doctor_management_menu(); break;
-            case 2: patient_management_menu(); break;
-            case 3: appointment_management_menu(); break;
+            case 1: schedule_appointment(); break;
+            case 2: edit_appointment(); break;
+            case 3: delete_appointment(); break;
+            case 4: view_appointments(); break;
             case 0: return;
             default: 
-                printf("Invalid choice!\n"); 
-                wait_for_enter(); 
+                printf("Invalid choice!\n");
+                wait_for_enter();
                 break;
         }
     }
 }
 
+// Doctor Management
 void doctor_management_menu() {
     int choice;
     while (1) {
@@ -337,42 +349,15 @@ void doctor_management_menu() {
             case 0: return;
             default: 
                 printf("Invalid choice!\n");
-                wait_for_enter(); 
+                wait_for_enter();
                 break;
         }
     }
 }
 
-void add_doctor() {
-    // Placeholder for adding a doctor
-    printf("Adding a new doctor...\n");
-    // Actual implementation would go here
-    wait_for_enter();
-}
-
-void edit_doctor() {
-    // Placeholder for editing a doctor
-    printf("Editing a doctor...\n");
-    // Actual implementation would go here
-    wait_for_enter();
-}
-
-void delete_doctor() {
-    // Placeholder for deleting a doctor
-    printf("Deleting a doctor...\n");
-    // Actual implementation would go here
-    wait_for_enter();
-}
-
-void view_doctors() {
-    // Placeholder for viewing doctors
-    printf("Viewing all doctors...\n");
-    // Actual implementation would go here
-    wait_for_enter();
-}
-
+// Patient Management
 void patient_management_menu() {
-    char choice;
+    int choice;
     while (1) {
         clear_screen();
         printf("\n=== PATIENT MANAGEMENT ===\n");
@@ -380,93 +365,76 @@ void patient_management_menu() {
         printf("2. Edit Patient\n");
         printf("3. Delete Patient\n");
         printf("4. View All Patients\n");
-        printf("0. Back\n\n");
+        printf("0. Back\n");
         printf("Enter your choice: ");
-        
+
         scanf("%d", &choice);
         clear_input_buffer();
 
         switch (choice) {
             case 1: add_patient(); break;
-            case 2: view_patients(); break;
+            case 2: edit_patient(); break;
+            case 3: delete_patient(); break;
+            case 4: view_patients(); break;
             case 0: return;
             default: 
-                printf("Invalid choice!\n"); 
-                wait_for_key(); 
+                printf("Invalid choice!\n");
+                wait_for_enter();
                 break;
         }
     }
 }
 
+// Receptionist Function Placeholders
+void add_doctor() {
+    printf("Adding new doctor...\n");
+    wait_for_enter();
+}
+
+void edit_doctor() {
+    printf("Editing doctor details...\n");
+    wait_for_enter();
+}
+
+void delete_doctor() {
+    printf("Deleting doctor...\n");
+    wait_for_enter();
+}
+
+void schedule_appointment() {
+    printf("Scheduling appointment...\n");
+    wait_for_enter();
+}
+
+void edit_appointment() {
+    printf("Editing appointment...\n");
+    wait_for_enter();
+}
+
+void delete_appointment() {
+    printf("Deleting appointment...\n");
+    wait_for_enter();
+}
+
 void add_patient() {
-    // Placeholder for adding a patient
-    printf("Adding a new patient...\n");
-    // Actual implementation would go here
+    printf("Adding new patient...\n");
     wait_for_enter();
 }
 
 void edit_patient() {
-    // Placeholder for editing a patient
-    printf("Editing a patient...\n");
-    // Actual implementation would go here
+    printf("Editing patient details...\n");
     wait_for_enter();
 }
 
 void delete_patient() {
-    // Placeholder for deleting a patient
-    printf("Deleting a patient...\n");
-    // Actual implementation would go here
+    printf("Deleting patient...\n");
     wait_for_enter();
 }
-
-void view_patients() {
-    // Placeholder for viewing patients
-    printf("Viewing all patients...\n");
-    // Actual implementation would go here
-    wait_for_enter();
-}
-
-
-// ================================================================================
-// Appointment Management Functions
-
-void appointment_management_menu() {
-    char ch;
-    while (1) {
-        clear_screen();
-        printf("\n=== APPOINTMENT MANAGEMENT ===\n");
-        printf("g. Schedule Appointment\n");
-        printf("h. Edit Appointment\n");
-        printf("i. Delete Appointment\n");
-        printf("j. View All Appointments\n");
-        printf("k. Lookup by Token Number\n");
-        printf("0. Back\n");
-        printf("Enter your choice: ");
-        scanf(" %c", &ch);
-
-        switch (ch) {
-            case 'g': case 'G': schedule_appointment(); break;
-            case 'h': case 'H': edit_appointment(); break;
-            case 'i': case 'I': delete_appointment(); break;
-            case 'j': case 'J': view_appointments(); break;
-            case 'k': case 'K': lookup_appointment_by_token(); break;
-            case '0': return;
-            default: 
-                printf("Invalid choice!\n"); 
-                wait_for_key(); 
-                break;
-        }
-    }
-}
-
-
-
-// ================================================================================
 
 // Utility Functions
 void wait_for_enter() {
     printf("Press Enter to continue...");
-    getchar(); // Wait for Enter
+    getchar();
 }
 
 void clear_screen() {
@@ -478,6 +446,17 @@ void clear_screen() {
 }
 
 void clear_input_buffer() {
-    while (getchar() != '\n'); // Flush input buffer
+    while (getchar() != '\n');
 }
 
+// Main Function
+int main() {
+    clear_screen();
+    // connect_database();
+    // initialize_database(db);
+
+    show_main_menu();
+
+    // sqlite3_close(db);
+    return 0;
+}
