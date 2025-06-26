@@ -1,0 +1,4 @@
+gcc app.c sqlite3.c -I. -o app.exe
+
+
+./app.exe
