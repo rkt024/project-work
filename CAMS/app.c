@@ -229,10 +229,16 @@ void add_patient() {
         name[strcspn(name, "\n")] = 0;  // remove newline
 
         if (strlen(name) == 0) {
-            printf("❌ Name cannot be empty.\n");
+            printf("Name cannot be empty.\n");
             wait_for_enter();
             return;
         }
+
+        // Convert to uppercase
+        for (int i = 0; name[i]; i++) {
+            name[i] = toupper((unsigned char)name[i]);
+        }
+
     } while (strlen(name) == 0);
     
     do {
@@ -259,7 +265,14 @@ void add_patient() {
         address[strcspn(address, "\n")] = 0;  // remove newline
 
         if (strlen(address) == 0) {
-            printf("❌ Address cannot be empty.\n");
+            printf("Address cannot be empty.\n");
+            wait_for_enter();
+            return;
+        }
+
+        // Convert to uppercase
+        for (int i = 0; address[i]; i++) {
+            address[i] = toupper((unsigned char)address[i]);
         }
 
     } while (strlen(address) == 0);
@@ -271,7 +284,7 @@ void add_patient() {
         contact[strcspn(contact, "\n")] = 0;
 
         if (strlen(contact) != 10) {
-            printf("❌ Contact must be exactly 10 digits long.\n");
+            printf("Contact must be exactly 10 digits long.\n");
             continue;
         }
 
@@ -279,7 +292,7 @@ void add_patient() {
         for (int i = 0; i < 10; i++) {
             if (!isdigit(contact[i])) {
                 valid = 0;
-                printf("❌ Contact must contain only digits.\n");
+                printf("Contact must contain only digits.\n");
                 break;
             }
         }
@@ -300,7 +313,7 @@ void add_patient() {
         gender[0] = toupper(gender[0]);
 
         if (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O')) {
-            printf("❌ Invalid input. Please enter M, F, or O only.\n");
+            printf("Invalid input. Please enter M, F, or O only.\n");
         }
     } while (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O'));
 
@@ -312,17 +325,196 @@ void add_patient() {
         name, age, weight, address, contact, gender);
 
     execute_sql(db, sql);
-    printf("\n✅ Patient added successfully.\n");
+    printf("\nPatient added successfully.\n");
     wait_for_enter();
 }
 
 void view_patients() {
-    printf("Viewing all patients...\n");
+    clear_screen();
+    printf("=== VIEW ALL PATIENTS ===\n");
+    const char *sql = "SELECT * FROM patients;";
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return;
+    }
+    
+    printf("\n%-5s %-25s %-5s %-10s %-25s %-15s %-8s\n", "ID", "Full Name", "Age", "Weight", "Address", "Contact", "Gender");
+    printf("----- ------------------------- ----- ---------- ------------------------- --------------- --------\n");
+
+    // Loop through rows
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int patient_id = sqlite3_column_int(stmt, 0);
+        const char *full_name = (const char*)sqlite3_column_text(stmt, 1);
+        int age = sqlite3_column_int(stmt, 2);
+        double weight = sqlite3_column_double(stmt, 3);
+        const char *address = (const char*)sqlite3_column_text(stmt, 4);
+        const char *contact = (const char*)sqlite3_column_text(stmt, 5);
+        const char *gender = (const char*)sqlite3_column_text(stmt, 6);
+
+        printf("%-5d %-25s %-5d %-10.2f %-25s %-15s %-8s\n",
+               patient_id, full_name, age, weight, address, contact, gender);
+    }
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error fetching data: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(stmt); // Clean up the prepared statement
+    printf("\nEnd of patient list.\n");
     wait_for_enter();
 }
 
 void edit_patient() {
-    printf("Editing patient details...\n");
+    clear_screen();
+    printf("=== EDIT PATIENT DETAILS ===\n");
+
+    int patient_id_to_edit;
+    printf("Enter the ID of the patient you want to edit: ");
+    if (scanf("%d", &patient_id_to_edit) != 1) {
+        printf("Invalid input. Please enter a number.\n");
+        clear_input_buffer();
+        wait_for_enter();
+        return;
+    }
+    clear_input_buffer(); // Clear buffer after scanf
+
+    char name[MAX_STRING], address[MAX_STRING], contact[MAX_STRING], gender[10];
+    int age;
+    float weight;
+
+    // Check if patient exists
+    char sql_check[256];
+    snprintf(sql_check, sizeof(sql_check),
+             "SELECT COUNT(*) FROM patients WHERE patient_id = %d;", patient_id_to_edit);
+    sqlite3_stmt *stmt_check;
+    if (sqlite3_prepare_v2(db, sql_check, -1, &stmt_check, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return;
+    }
+
+    int patient_exists = 0;
+    if (sqlite3_step(stmt_check) == SQLITE_ROW) {
+        patient_exists = sqlite3_column_int(stmt_check, 0);
+    }
+    sqlite3_finalize(stmt_check);
+
+    if (!patient_exists) {
+        printf("Patient with ID %d does not exist.\n", patient_id_to_edit);
+        wait_for_enter();
+        return;
+    }
+
+    printf("\nEnter NEW details for Patient ID %d:\n", patient_id_to_edit);
+
+    do {
+        printf("Full Name: ");
+        fgets(name, MAX_STRING, stdin);
+        name[strcspn(name, "\n")] = 0;  // remove newline
+
+        if (strlen(name) == 0) {
+            printf("Name cannot be empty.\n");
+            wait_for_enter();
+            return;
+        }
+
+        // Convert to uppercase
+        for (int i = 0; name[i]; i++) {
+            name[i] = toupper((unsigned char)name[i]);
+        }
+
+    } while (strlen(name) == 0);
+    
+    do {
+        printf("Age: "); 
+        scanf("%d", &age); 
+        clear_input_buffer();
+        if (age <= 0) {
+            printf("Age must be a positive integer.\n");
+        }
+    } while (age <= 0);
+    
+    do {
+        printf("Weight (kg): "); 
+        scanf("%f", &weight); 
+        clear_input_buffer();
+        if (weight <= 0) {
+            printf("Weight must be a positive number.\n");
+        }
+    } while (weight <= 0);
+    
+    do {
+        printf("Address: ");
+        fgets(address, MAX_STRING, stdin);
+        address[strcspn(address, "\n")] = 0;  // remove newline
+
+        if (strlen(address) == 0) {
+            printf("Address cannot be empty.\n");
+            wait_for_enter();
+            return;
+        }
+
+        // Convert to uppercase
+        for (int i = 0; address[i]; i++) {
+            address[i] = toupper((unsigned char)address[i]);
+        }
+
+    } while (strlen(address) == 0);
+
+
+    do {
+        printf("Contact Number (10 digits only): ");
+        fgets(contact, MAX_STRING, stdin);
+        contact[strcspn(contact, "\n")] = 0;
+
+        if (strlen(contact) != 10) {
+            printf("Contact must be exactly 10 digits long.\n");
+            continue;
+        }
+
+        int valid = 1;
+        for (int i = 0; i < 10; i++) {
+            if (!isdigit(contact[i])) {
+                valid = 0;
+                printf("Contact must contain only digits.\n");
+                break;
+            }
+        }
+
+        if (valid) {
+            break;  // valid contact, exit loop
+        }
+
+    } while (1);  // keep repeating until a valid contact is entered
+
+    do {
+        printf("Gender (M/F/O): ");
+        fgets(gender, sizeof(gender), stdin);
+        gender[strcspn(gender, "\n")] = 0;
+
+        // Convert first character to uppercase
+        gender[0] = toupper(gender[0]);
+
+        if (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O')) {
+            printf("Invalid input. Please enter M, F, or O only.\n");
+        }
+    } while (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O'));
+
+    // Prepare the SQL update statement
+    char sql_update[1024]; // Using a larger buffer for the SQL query
+    snprintf(sql_update, sizeof(sql_update),
+             "UPDATE patients SET full_name = '%s', age = %d, weight = %.2f, address = '%s', contact = '%s', gender = '%s' WHERE patient_id = %d;",
+             name, age, weight, address, contact, gender, patient_id_to_edit);
+
+    execute_sql(db, sql_update);
+
+    // Check if any rows were affected to confirm if the patient ID existed
+    if (sqlite3_changes(db) > 0) {
+        printf("\nPatient details updated successfully for ID %d.\n", patient_id_to_edit);
+    } else {
+        printf("\nPatient with ID %d not found or no changes were made.\n", patient_id_to_edit);
+    }
     wait_for_enter();
 }
 
