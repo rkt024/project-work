@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sqlite3.h>
-#include <ctype.h>
+#include <ctype.h> // For toupper, isdigit, tolower
 
 // Constants
 #define MAX_STRING 256
@@ -14,32 +14,46 @@ sqlite3 *db;
 
 // Utility function prototypes
 void wait_for_enter();
-void clear_screen();
+void clear_screen(); // Clears the console screen
 void clear_input_buffer();
-void to_uppercase(char *str);
+void to_uppercase(char *str); // Converts a string to uppercase
+void getString(char *input, int size, const char *message); // Gets a non-empty string input with a custom message
+int getPositiveInt(const char *message); // Gets a positive integer input with a custom message
+float getPositiveFloat(const char *message); // Gets a positive float input with a custom message
+char getGender(const char *message); // Gets a valid gender input (M, F, O)
+void getContactNumber(char *contact, const char *message); // Gets a valid contact number input (10 digits only)
 
 // DB Function Prototypes
 void connect_database();
 void initialize_database(sqlite3 *db);
 void execute_sql(sqlite3 *db, const char *sql);
+int getRecordCount(const char *table_name, const char *id_column, int id_value);
 
 // Menu Functions
 void show_main_menu();
 void receptionist_menu();
+void patient_management_menu();
+void doctor_management_menu();
+void appointment_management_menu();
 
 // Patient Management Prototypes
-void patient_management_menu();
 void add_patient();
 void view_patients();
 void edit_patient();
 void delete_patient();
 
 // Doctor Management Prototypes
-void doctor_management_menu();
 void add_doc();
 void view_docs();
 void edit_doc();
 void delete_doc();
+
+// Appointment Management Prototypes
+void schedule_appointment();
+void view_appointments();
+void edit_appointment();
+void cancel_appointment();
+
 
 // Main Function
 int main() {
@@ -110,6 +124,26 @@ void initialize_database(sqlite3 *db) {
     execute_sql(db, sql);
 }
 
+// getRecordCount function
+int getRecordCount(const char *table_name, const char *id_column, int id_value) {
+    char sql[256];
+    snprintf(sql, sizeof(sql), "SELECT COUNT(*) FROM %s WHERE %s = %d;", table_name, id_column, id_value);
+
+    sqlite3_stmt *stmt;
+    int count = 0;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    if (rc == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            count = sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    } else {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+    }
+    return count;
+}
+
 // Main Menu
 void show_main_menu() {
     int choice;
@@ -164,8 +198,8 @@ void receptionist_menu() {
 
         switch (choice) {
             case 1: 
-                // appointment_management_menu(); 
-                printf("Appointment management is under construction.\n");
+                appointment_management_menu(); 
+                // printf("Appointment management is under construction.\n");
                 wait_for_enter();
                 break;
             case 2: 
@@ -223,96 +257,24 @@ void add_patient() {
     clear_screen();
     printf("=== ADD NEW PATIENT ===\n");
     printf("Please enter the following details:\n");
-    do {
-        printf("Full Name: ");
-        fgets(name, MAX_STRING, stdin);
-        name[strcspn(name, "\n")] = 0;  // remove newline
 
-        if (strlen(name) == 0) {
-            printf("Name cannot be empty.\n");
-            wait_for_enter();
-            return;
-        }
+    getString(name, MAX_STRING, "Full Name: ");
+    getString(address, MAX_STRING, "Address: ");
+    getContactNumber(contact, "Contact Number (10 digits only): ");
 
-        // Convert to uppercase
-        to_uppercase(name);
+    // FIXED: Assign gender correctly and null-terminate
+    gender[0] = getGender("Enter your gender (M/F/O): ");
+    gender[1] = '\0';  // Null-terminate to make it a proper string
 
-    } while (strlen(name) == 0);
-    
-    do {
-        printf("Age: "); 
-        scanf("%d", &age); 
-        clear_input_buffer();
-        if (age <= 0) {
-            printf("Age must be a positive integer.\n");
-        }
-    } while (age <= 0);
-    
-    do {
-        printf("Weight (kg): "); 
-        scanf("%f", &weight); 
-        clear_input_buffer();
-        if (weight <= 0) {
-            printf("Weight must be a positive number.\n");
-        }
-    } while (weight <= 0);
-    
-    do {
-        printf("Address: ");
-        fgets(address, MAX_STRING, stdin);
-        address[strcspn(address, "\n")] = 0;  // remove newline
-
-        if (strlen(address) == 0) {
-            printf("Address cannot be empty.\n");
-            wait_for_enter();
-            return;
-        }
-
-        // Convert to uppercase
-        to_uppercase(address);
-
-    } while (strlen(address) == 0);
-
-
-    do {
-        printf("Contact Number (10 digits only): ");
-        fgets(contact, MAX_STRING, stdin);
-        contact[strcspn(contact, "\n")] = 0;
-
-        if (strlen(contact) != 10) {
-            printf("Contact must be exactly 10 digits long.\n");
-            continue;
-        }
-
-        int valid = 1;
-        for (int i = 0; i < 10; i++) {
-            if (!isdigit(contact[i])) {
-                valid = 0;
-                printf("Contact must contain only digits.\n");
-                break;
-            }
-        }
-
-        if (valid) {
-            break;  // valid contact, exit loop
-        }
-
-    } while (1);  // keep repeating until a valid contact is entered
-
-
-    do {
-        printf("Gender (M/F/O): ");
-        fgets(gender, sizeof(gender), stdin);
-        gender[strcspn(gender, "\n")] = 0;
-
-        // Convert first character to uppercase
-        gender[0] = toupper(gender[0]);
-
-        if (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O')) {
-            printf("Invalid input. Please enter M, F, or O only.\n");
-        }
-    } while (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O'));
-
+    age = getPositiveInt("Age: ");
+    weight = getPositiveFloat("Weight (kg): ");
+/* 
+    printf("Full Name: %s\n", name);
+    printf("Address: %s\n", address);
+    printf("Contact: %s\n", contact);
+    printf("Gender: %s\n", gender);
+    printf("Age: %d\n", age);
+    printf("Weight: %.2f\n", weight); */
 
     char sql[512];
     snprintf(sql, sizeof(sql),
@@ -404,93 +366,13 @@ void edit_patient() {
 
     printf("\nEnter NEW details for Patient ID %d:\n", patient_id_to_edit);
 
-    do {
-        printf("Full Name: ");
-        fgets(name, MAX_STRING, stdin);
-        name[strcspn(name, "\n")] = 0;  // remove newline
+    getString(name, MAX_STRING, "Full Name: ");
+    getString(address, MAX_STRING, "Address: ");
+    getContactNumber(contact, "Contact Number (10 digits only): ");
+    age = getPositiveInt("Age: ");
+    weight = getPositiveFloat("Weight (kg): ");
+    gender[10] = getGender("Gender (M/F/O): ");
 
-        if (strlen(name) == 0) {
-            printf("Name cannot be empty.\n");
-            wait_for_enter();
-            return;
-        }
-
-        // Convert to uppercase
-        to_uppercase(name);
-
-    } while (strlen(name) == 0);
-    
-    do {
-        printf("Age: "); 
-        scanf("%d", &age); 
-        clear_input_buffer();
-        if (age <= 0) {
-            printf("Age must be a positive integer.\n");
-        }
-    } while (age <= 0);
-    
-    do {
-        printf("Weight (kg): "); 
-        scanf("%f", &weight); 
-        clear_input_buffer();
-        if (weight <= 0) {
-            printf("Weight must be a positive number.\n");
-        }
-    } while (weight <= 0);
-    
-    do {
-        printf("Address: ");
-        fgets(address, MAX_STRING, stdin);
-        address[strcspn(address, "\n")] = 0;  // remove newline
-
-        if (strlen(address) == 0) {
-            printf("Address cannot be empty.\n");
-            wait_for_enter();
-            return;
-        } else {
-            to_uppercase(address);
-        }
-
-    } while (strlen(address) == 0);
-
-
-    do {
-        printf("Contact Number (10 digits only): ");
-        fgets(contact, MAX_STRING, stdin);
-        contact[strcspn(contact, "\n")] = 0;
-
-        if (strlen(contact) != 10) {
-            printf("Contact must be exactly 10 digits long.\n");
-            continue;
-        }
-
-        int valid = 1;
-        for (int i = 0; i < 10; i++) {
-            if (!isdigit(contact[i])) {
-                valid = 0;
-                printf("Contact must contain only digits.\n");
-                break;
-            }
-        }
-
-        if (valid) {
-            break;  // valid contact, exit loop
-        }
-
-    } while (1);  // keep repeating until a valid contact is entered
-
-    do {
-        printf("Gender (M/F/O): ");
-        fgets(gender, sizeof(gender), stdin);
-        gender[strcspn(gender, "\n")] = 0;
-
-        // Convert first character to uppercase
-        gender[0] = toupper(gender[0]);
-
-        if (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O')) {
-            printf("Invalid input. Please enter M, F, or O only.\n");
-        }
-    } while (strlen(gender) != 1 || (gender[0] != 'M' && gender[0] != 'F' && gender[0] != 'O'));
 
     // Prepare the SQL update statement
     char sql_update[1024]; // Using a larger buffer for the SQL query
@@ -628,62 +510,9 @@ void add_doc() {
     printf("=== ADD NEW DOCTOR ===\n");
     printf("Please enter the following details:\n");
 
-    do {
-        printf("Full Name: ");
-        fgets(name, MAX_STRING, stdin);
-        name[strcspn(name, "\n")] = 0;  // remove newline
-
-        if (strlen(name) == 0) {
-            printf("Name cannot be empty.\n");
-            wait_for_enter();
-            return;
-        }
-
-        // Convert to uppercase
-        to_uppercase(name);
-
-    } while (strlen(name) == 0);
-
-    do {
-        printf("Specialization: ");
-        fgets(specialization, MAX_STRING, stdin);
-        specialization[strcspn(specialization, "\n")] = 0;  // remove newline
-
-        if (strlen(specialization) == 0) {
-            printf("Specialization cannot be empty.\n");
-            wait_for_enter();
-            return;
-        }
-
-        // Convert to uppercase
-        to_uppercase(specialization);
-
-    } while (strlen(specialization) == 0);
-
-    do {
-        printf("Contact Number (10 digits only): ");
-        fgets(contact, MAX_STRING, stdin);
-        contact[strcspn(contact, "\n")] = 0;
-
-        if (strlen(contact) != 10) {
-            printf("Contact must be exactly 10 digits long.\n");
-            continue;
-        }
-
-        int valid = 1;
-        for (int i = 0; i < 10; i++) {
-            if (!isdigit(contact[i])) {
-                valid = 0;
-                printf("Contact must contain only digits.\n");
-                break;
-            }
-        }
-
-        if (valid) {
-            break;  // valid contact, exit loop
-        }
-
-    } while (1);  // keep repeating until a valid contact is entered
+    getString(name, MAX_STRING, "Full Name: ");
+    getContactNumber(contact, "Contact Number (10 digits only): ");
+    getString(specialization, MAX_STRING, "Specialization: ");
 
     char sql[512];
     snprintf(sql, sizeof(sql),
@@ -773,33 +602,9 @@ void edit_doc() {
     sqlite3_finalize(stmt_fetch);
 
     printf("\nEnter NEW details for Doctor ID %d (press Enter to keep current value):\n", doctor_id_to_edit);
-
-    // Full Name
-    printf("Full Name [%s]: ", current_name);
-    fgets(name, MAX_STRING, stdin);
-    name[strcspn(name, "\n")] = 0;
-    if (strlen(name) == 0) {
-        strncpy(name, current_name, MAX_STRING);
-    }
-    to_uppercase(name);
-
-    // Specialization
-    printf("Specialization [%s]: ", current_specialization);
-    fgets(specialization, MAX_STRING, stdin);
-    specialization[strcspn(specialization, "\n")] = 0;
-    if (strlen(specialization) == 0) {
-        strncpy(specialization, current_specialization, MAX_STRING);
-    }
-    to_uppercase(specialization);
-
-    // Contact
-    printf("Contact [%s]: ", current_contact);
-    fgets(contact, MAX_STRING, stdin);
-    contact[strcspn(contact, "\n")] = 0;
-    if (strlen(contact) == 0) {
-        strncpy(contact, current_contact, MAX_STRING);
-    }
-    to_uppercase(contact);
+    getString(name, MAX_STRING, "Full Name: ");
+    getString(specialization, MAX_STRING, "Specialization: "); 
+    getContactNumber(contact, "Contact Number (10 digits only): ");
 
     // Update doctor details
     char sql_update[512];
@@ -901,6 +706,280 @@ void delete_doc() {
     }
 }
 
+// Appointment Management
+void appointment_management_menu() {
+    int choice;
+    while (1) {
+        clear_screen();
+        printf("\n=== APPOINTMENT MANAGEMENT ===\n");
+        printf("1. Schedule Appointment\n");
+        printf("2. Edit Appointment\n");
+        printf("3. Delete Appointment\n");
+        printf("4. View All Appointments\n");
+        printf("0. Back\n");
+        printf("Enter your choice: ");
+
+        scanf("%d", &choice);
+        clear_input_buffer();
+
+        switch (choice) {
+            case 1: schedule_appointment(); break;
+            case 2: edit_appointment(); break;
+            case 3: cancel_appointment(); break;
+            case 4: view_appointments(); break;
+            case 0: return;
+            default: 
+                printf("Invalid choice!\n");
+                wait_for_enter();
+                break;
+        }
+    }
+}
+
+void schedule_appointment() {
+    int patient_id, doctor_id;
+    char appointment_date[11], appointment_time[6];
+    int patient_exists, doctor_exists;
+
+    clear_screen();
+    printf("=== SCHEDULE APPOINTMENT ===\n");
+    printf("Please enter the following details:\n");
+
+    // Get and validate Patient ID
+    do {
+        patient_id = getPositiveInt("Enter Patient ID: ");
+        patient_exists = getRecordCount("patients", "patient_id", patient_id);
+        if (!patient_exists) {
+            printf("Patient with ID %d does not exist. Please enter a valid Patient ID.\n", patient_id);
+            wait_for_enter();
+        }
+    } while (!patient_exists);
+
+    // Get and validate Doctor ID
+    do {
+        doctor_id = getPositiveInt("Enter Doctor ID: ");
+        doctor_exists = getRecordCount("doctors", "doctor_id", doctor_id);
+        if (!doctor_exists) {
+            printf("Doctor with ID %d does not exist. Please enter a valid Doctor ID.\n", doctor_id);
+            wait_for_enter();
+        }
+    } while (!doctor_exists);
+
+    // Get appointment date (YYYY-MM-DD)
+    getString(appointment_date, 15, "Enter Appointment Date (YYYY-MM-DD): ");
+    // Get appointment time (HH:MM)
+    getString(appointment_time, 6, "Enter Appointment Time (HH:MM): ");
+
+/* 
+    // --- Validation Checks ---
+    // 1. Check if the doctor has reached the maximum appointments for the *specified day*
+    char sql_count_daily[256];
+    snprintf(sql_count_daily, sizeof(sql_count_daily),
+             "SELECT COUNT(*) FROM appointments WHERE doctor_id = %d AND appointment_date = '%s';",
+             doctor_id, appointment_date); // Use the entered date, not date('now')
+
+    sqlite3_stmt *stmt_count_daily;
+    int appointment_count = 0;
+    if (sqlite3_prepare_v2(db, sql_count_daily, -1, &stmt_count_daily, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare daily appointment count statement: %s\n", sqlite3_errmsg(db));
+        wait_for_enter(); // Add wait_for_enter for user to see the error
+        return;
+    }
+
+    if (sqlite3_step(stmt_count_daily) == SQLITE_ROW) {
+        appointment_count = sqlite3_column_int(stmt_count_daily, 0);
+    }
+    sqlite3_finalize(stmt_count_daily);
+
+    if (appointment_count >= MAX_APPOINTMENTS_PER_DAY) {
+        printf("Doctor with ID %d has reached the maximum appointments (%d) for %s.\n",
+               doctor_id, MAX_APPOINTMENTS_PER_DAY, appointment_date);
+        wait_for_enter();
+        return;
+    }
+
+    // 2. Check for existing appointments at the *same date and time* for the same doctor (double-booking)
+    char check_sql_slot[512];
+    snprintf(check_sql_slot, sizeof(check_sql_slot),
+             "SELECT COUNT(*) FROM appointments WHERE doctor_id = %d AND appointment_date = '%s' AND appointment_time = '%s';",
+             doctor_id, appointment_date, appointment_time);
+
+    sqlite3_stmt *stmt_check_slot;
+    int existing_appointments_slot = 0;
+    int rc_slot = sqlite3_prepare_v2(db, check_sql_slot, -1, &stmt_check_slot, NULL);
+
+    if (rc_slot == SQLITE_OK) {
+        if (sqlite3_step(stmt_check_slot) == SQLITE_ROW) {
+            existing_appointments_slot = sqlite3_column_int(stmt_check_slot, 0);
+        }
+        sqlite3_finalize(stmt_check_slot);
+    } else {
+        fprintf(stderr, "Failed to prepare slot booking check statement: %s\n", sqlite3_errmsg(db));
+        wait_for_enter();
+        return;
+    }
+
+    if (existing_appointments_slot > 0) {
+        printf("\nError: Doctor ID %d is already booked at %s on %s. Please choose a different time or date.\n",
+               doctor_id, appointment_time, appointment_date);
+        wait_for_enter();
+        return; // Prevent scheduling if already booked
+    }
+ */
+
+    // Prepare the SQL insert statement
+    char sql_insert[512];
+    snprintf(sql_insert, sizeof(sql_insert),
+             "INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time) "
+             "VALUES (%d, %d, '%s', '%s');",
+             patient_id, doctor_id, appointment_date, appointment_time);
+
+    execute_sql(db, sql_insert);
+
+    // Check if the insertion was successful
+    if (sqlite3_changes(db) > 0) {
+        printf("\nAppointment scheduled successfully.\n");
+    } else {
+        printf("\nFailed to schedule appointment. This might be due to a database error or constraint violation.\n");
+    }
+    wait_for_enter();
+}
+
+void view_appointments() {
+    clear_screen();
+    printf("=== VIEW ALL APPOINTMENTS ===\n");
+    const char *sql = "SELECT a.appointment_id, p.full_name AS patient_name, d.full_name AS doctor_name, "
+                      "a.appointment_date, a.appointment_time "
+                      "FROM appointments a "
+                      "JOIN patients p ON a.patient_id = p.patient_id "
+                      "JOIN doctors d ON a.doctor_id = d.doctor_id;";
+    
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return;
+    }
+    
+    printf("\n%-5s %-25s %-25s %-15s %-5s\n", "ID", "Patient Name", "Doctor Name", "Date", "Time");
+    printf("----- ------------------------- ------------------------- --------------- -----\n");
+
+    // Loop through rows
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int appointment_id = sqlite3_column_int(stmt, 0);
+        const char *patient_name = (const char*)sqlite3_column_text(stmt, 1);
+        const char *doctor_name = (const char*)sqlite3_column_text(stmt, 2);
+        const char *appointment_date = (const char*)sqlite3_column_text(stmt, 3);
+        const char *appointment_time = (const char*)sqlite3_column_text(stmt, 4);
+
+        printf("%-5d %-25s %-25s %-15s %-5s\n",
+               appointment_id, patient_name, doctor_name, appointment_date, appointment_time);
+    }
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error fetching data: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(stmt); // Clean up the prepared statement
+    printf("\nEnd of appointment list.\n");
+    wait_for_enter();
+}
+
+void cancel_appointment() {
+    clear_screen();
+    printf("=== CANCEL APPOINTMENT ===\n");
+
+    int appointment_id_to_cancel;
+
+    // Ask for appointment ID
+    printf("Enter the ID of the appointment you want to cancel: ");
+    if (scanf("%d", &appointment_id_to_cancel) != 1) {
+        printf("Invalid input. Please enter a number.\n");
+        clear_input_buffer();
+        wait_for_enter();
+        return;
+    }
+    clear_input_buffer(); // Clear leftover input from stdin
+
+    // Check if appointment exists
+    char sql_check[256];
+    snprintf(sql_check, sizeof(sql_check),
+             "SELECT COUNT(*) FROM appointments WHERE appointment_id = %d;",
+             appointment_id_to_cancel);
+
+    sqlite3_stmt *stmt_check;
+    if (sqlite3_prepare_v2(db, sql_check, -1, &stmt_check, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return;
+    }
+
+    int appointment_exists = 0;
+    if (sqlite3_step(stmt_check) == SQLITE_ROW) {
+        appointment_exists = sqlite3_column_int(stmt_check, 0);
+    }
+    sqlite3_finalize(stmt_check);
+
+    if (!appointment_exists) {
+        printf("Appointment with ID %d does not exist.\n", appointment_id_to_cancel);
+        wait_for_enter();
+        return;
+    }
+
+    char confirm = '\0';
+
+    // Keep looping until user enters 'y' or 'n'
+    while (confirm != 'y' && confirm != 'n') {
+        printf("Are you sure you want to cancel appointment ID %d? (y/n): ", appointment_id_to_cancel);
+        confirm = getchar();
+
+        // Clear the input buffer to remove extra characters or newline
+        while (getchar() != '\n');
+
+        // Convert to lowercase to accept 'Y' or 'N'
+        confirm = tolower((unsigned char)confirm);
+
+        if (confirm != 'y' && confirm != 'n') {
+            printf("Invalid input. Please enter 'y' or 'n'.\n");
+        }
+    }
+
+    // Now handle 'y' and 'n'
+    if (confirm == 'n') {
+        printf("Cancellation cancelled by user.\n");
+        wait_for_enter();
+        return;
+    }
+
+    // Prepare and execute the DELETE SQL statement
+    char sql_delete[256];
+    snprintf(sql_delete, sizeof(sql_delete),
+             "DELETE FROM appointments WHERE appointment_id = %d;",
+             appointment_id_to_cancel);
+
+    sqlite3_stmt *stmt_delete;
+    if (sqlite3_prepare_v2(db, sql_delete, -1, &stmt_delete, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return;
+    }
+
+    if (sqlite3_step(stmt_delete) != SQLITE_DONE) {
+        fprintf(stderr, "Error deleting appointment: %s\n", sqlite3_errmsg(db));
+    } else {
+        printf("Appointment ID %d has been successfully cancelled.\n", appointment_id_to_cancel);
+    }
+
+    sqlite3_finalize(stmt_delete);
+    wait_for_enter();
+}
+
+void edit_appointment() {
+    clear_screen();
+    printf("=== Menu Under Construction ===\n");
+    printf("This feature is currently under construction.\n");
+    printf("Please check back later.\n");
+    wait_for_enter();
+}
+
 // Utility Functions
 void wait_for_enter() {
     printf("Press Enter to continue...");
@@ -925,3 +1004,125 @@ void to_uppercase(char *str) {
         str[i] = toupper((unsigned char)str[i]);
     }
 }
+
+void getString(char *input, int size, const char *message) {
+    while (1) {
+        printf("%s", message);
+        fgets(input, size, stdin);
+
+        // Remove newline character if present
+        input[strcspn(input, "\n")] = 0;
+
+        to_uppercase(input); // Convert to uppercase
+        if (strlen(input) == 0) {
+            printf("Input cannot be empty. Please try again.\n");
+        } else {
+            break;
+        }
+    }
+}
+
+// Gets a positive integer from the user
+int getPositiveInt(const char *message) {
+    int input;
+
+    while (1) {
+        printf("%s", message);
+
+        if (scanf("%d", &input) != 1) {
+            printf("Invalid input. Please enter a valid number.\n");
+            clear_input_buffer();
+            continue;
+        }
+
+        clear_input_buffer(); // Clear leftover input from stdin
+
+        if (input > 0) {
+            return input;
+        } else {
+            printf("Please enter a positive number.\n");
+        }
+    }
+}
+
+float getPositiveFloat(const char *message) {
+    float input;
+
+    while (1) {
+        printf("%s", message);
+
+        if (scanf("%f", &input) != 1) {
+            printf("Invalid input. Please enter a valid number.\n");
+            clear_input_buffer();
+            continue;
+        }
+
+        clear_input_buffer(); // Clear leftover input from stdin
+
+        if (input > 0) {
+            return input;
+        } else {
+            printf("Please enter a positive number.\n");
+        }
+    }
+}
+
+char getGender(const char *message) {
+    char gender[10];
+
+    while (1) {
+        printf("%s", message);
+        if (fgets(gender, sizeof(gender), stdin) == NULL) {
+            printf("Error reading input.\n");
+            continue;
+        }
+
+        gender[strcspn(gender, "\n")] = '\0';  // Remove newline
+
+        if (strlen(gender) != 1) {
+            printf("Invalid input. Please enter a single character: M, F, or O.\n");
+            continue;
+        }
+
+        gender[0] = toupper((unsigned char)gender[0]);
+
+        if (gender[0] == 'M' || gender[0] == 'F' || gender[0] == 'O') {
+            return gender[0];
+        } else {
+            printf("Invalid input. Please enter M, F, or O only.\n");
+        }
+    }
+}
+
+// Function to get a valid 10-digit contact number
+void getContactNumber(char *contact, const char *message) {
+    while (1) {
+        printf("%s", message);
+        fgets(contact, 100, stdin);
+
+        // Remove newline character if present
+        contact[strcspn(contact, "\n")] = 0;
+
+        // Check length
+        if (strlen(contact) != 10) {
+            printf("Contact must be exactly 10 digits long.\n");
+            continue;
+        }
+
+        // Check for only digits
+        int valid = 1;
+        for (int i = 0; i < 10; i++) {
+            if (!isdigit(contact[i])) {
+                valid = 0;
+                printf("Contact must contain only digits.\n");
+                break;
+            }
+        }
+
+        if (valid) {
+            break;  // valid contact number
+        }
+    }
+}
+
+
